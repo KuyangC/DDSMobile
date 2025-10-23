@@ -630,7 +630,7 @@ class _FullMonitoringPageState extends State<FullMonitoringPage> with WidgetsBin
 
   // Get zone color based on system status
   Color _getZoneColorFromSystem(int zoneNumber) {
-    final fireAlarmData = Provider.of<FireAlarmData>(context, listen: false);
+    final fireAlarmData = Provider.of<FireAlarmData>(context, listen: true);
 
     // Check if system is in alarm
     if (fireAlarmData.getSystemStatus('Alarm')) {
@@ -1095,6 +1095,13 @@ class _FullMonitoringPageState extends State<FullMonitoringPage> with WidgetsBin
       await _audioManager.initialize();
       await _notificationService.initialize();
       debugPrint('Services initialized successfully');
+
+      // Test Firebase connection after 3 seconds
+      Future.delayed(const Duration(seconds: 3), () {
+        final fireAlarmData = context.read<FireAlarmData>();
+        fireAlarmData.testFirebaseUpdate();
+      });
+
     } catch (e) {
       debugPrint('Error initializing services: $e');
     }

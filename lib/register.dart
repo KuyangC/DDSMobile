@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/auth_service.dart';
 import '../utils/validation_helpers.dart';
@@ -25,7 +26,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _phoneController = TextEditingController();
   
   // Firebase Database reference
-  final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref();
+  final DatabaseReference _databaseRef = FirebaseDatabase.instanceFor(app: Firebase.app('fireAlarmApp')).ref();
   
   // Auth service instance
   final AuthService _authService = AuthService();

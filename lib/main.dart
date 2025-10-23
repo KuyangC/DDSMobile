@@ -60,8 +60,10 @@ void main() async {
     }
   }
 
-  // Initialize FCM with error handling
+  // Initialize FCM with error handling - DISABLED FOR NOW
   try {
+    debugPrint('FCM initialization skipped for debugging');
+    /*
     FirebaseMessaging messaging = FirebaseMessaging.instance;
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
@@ -77,36 +79,47 @@ void main() async {
     // Subscribe to topics for notifications
     await messaging.subscribeToTopic('status_updates');
     debugPrint('Subscribed to status_updates topic');
-    
+
     // Subscribe to fire alarm events topic
     await FCMService.subscribeToFireAlarmEvents(token);
     debugPrint('Subscribed to fire_alarm_events topic');
+    */
   } catch (e) {
     debugPrint('FCM initialization failed: $e');
   }
 
-  // Handle background messages
-  FirebaseMessaging.onBackgroundMessage(bg_notification.BackgroundNotificationService.firebaseMessagingBackgroundHandler);
+  // Handle background messages - DISABLED FOR NOW
+  try {
+    debugPrint('Background message handling skipped for debugging');
+    /*
+    FirebaseMessaging.onBackgroundMessage(bg_notification.BackgroundNotificationService.firebaseMessagingBackgroundHandler);
+    */
+  } catch (e) {
+    debugPrint('Background message setup failed: $e');
+  }
 
-  // Handle foreground messages
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    debugPrint('Got a message whilst in the foreground!');
-    debugPrint('Message data: ${message.data}');
+  // Handle foreground messages - DISABLED FOR NOW
+  try {
+    debugPrint('Foreground message handling skipped for debugging');
+    /*
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint('Got a message whilst in the foreground!');
+      debugPrint('Message data: ${message.data}');
 
-    // Show notification with sound even when app is in foreground
-    final data = message.data;
-    final eventType = data['eventType'] ?? 'UNKNOWN';
-    final status = data['status'] ?? '';
-    final user = data['user'] ?? 'System';
-    
-    bg_notification.BackgroundNotificationService().showFireAlarmNotification(
-      title: 'Fire Alarm: $eventType',
-      body: 'Status: $status - By: $user',
-      eventType: eventType,
-      data: data,
-    );
+      // Show notification with sound even when app is in foreground
+      final data = message.data;
+      final eventType = data['eventType'] ?? 'UNKNOWN';
+      final status = data['status'] ?? '';
+      final user = data['user'] ?? 'System';
 
-    if (message.notification != null) {
+      bg_notification.BackgroundNotificationService().showFireAlarmNotification(
+        title: 'Fire Alarm: $eventType',
+        body: 'Status: $status - By: $user',
+        eventType: eventType,
+        data: data,
+      );
+
+      if (message.notification != null) {
       debugPrint('Message also contained a notification: ${message.notification}');
     }
   });

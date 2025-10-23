@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthService {
@@ -12,7 +13,7 @@ class AuthService {
   static const String _configDoneKey = 'config_done';
   static const String _settingsDoneKey = 'settings_done';
 
-  final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref();
+  final DatabaseReference _databaseRef = FirebaseDatabase.instanceFor(app: Firebase.app('fireAlarmApp')).ref();
   
   // Simpan session login ke local storage
   Future<void> saveLoginSession({
