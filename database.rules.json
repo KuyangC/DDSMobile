@@ -116,7 +116,7 @@
         "$logId": {
           ".validate": "newData.hasChildren(['status', 'timestamp', 'message', 'userId'])",
           "status": {
-            ".validate": "newData.isString() && newData.val().matches(/^(Normal|Alarm|Trouble)$/"
+            ".validate": "newData.isString() && (newData.val() === 'Normal' || newData.val() === 'Alarm' || newData.val() === 'Trouble')"
           },
           "timestamp": {
             ".validate": "newData.isNumber() && newData.val() > 0"
@@ -160,6 +160,22 @@
     "moduleNames": {
       ".read": "auth != null",
       ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+    "all_slave_data": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "raw_data": {
+        ".validate": "newData.isString() && newData.val().length <= 1000"
+      },
+      "timestamp": {
+        ".validate": "newData.isNumber() && newData.val() > 0"
+      },
+      "test": {
+        ".validate": "newData.isBoolean()"
+      },
+      "$other": {
+        ".validate": false
+      }
     }
   }
 }

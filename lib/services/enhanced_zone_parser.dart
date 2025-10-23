@@ -255,6 +255,7 @@ class EnhancedZoneParser {
   static EnhancedParsingResult parseCompleteDataStream(String rawData) {
     try {
       debugPrint('🔍 $_tag: Starting enhanced parsing: ${rawData.length} chars');
+      debugPrint('🔍 $_tag: Raw data: "$rawData"');
 
       // Step 1: Validate basic structure
       if (!_validateBasicStructure(rawData)) {
@@ -299,6 +300,12 @@ class EnhancedZoneParser {
 
   /// Validate basic structure
   static bool _validateBasicStructure(String rawData) {
+    // For testing: accept short data (6 chars) without STX/ETX
+    if (rawData.length == 6 && RegExp(r'^[0-9A-Fa-f]{6}$').hasMatch(rawData)) {
+      debugPrint('🧪 $_tag: Accepting test data format: $rawData');
+      return true;
+    }
+
     // Must start with STX and end with ETX
     if (!rawData.contains(String.fromCharCode(stx)) ||
         !rawData.contains(String.fromCharCode(etx))) {
@@ -315,6 +322,24 @@ class EnhancedZoneParser {
   /// Extract individual messages
   static List<String> _extractMessages(String rawData) {
     final List<String> messages = [];
+
+    // Handle 6-char device data (AA BB CC format)
+    if (rawData.length == 6 && RegExp(r'^[0-9A-Fa-f]{6}$').hasMatch(rawData)) {
+      debugPrint('🧪 $_tag: Processing 6-char device data: $rawData');
+      final stx = String.fromCharCode(0x02);
+      final etx = String.fromCharCode(0x03);
+      messages.add(stx + rawData + etx);
+      return messages;
+    }
+
+    // Handle 2-char device data (AA format - slave offline)
+    if (rawData.length == 2 && RegExp(r'^[0-9A-Fa-f]{2}$').hasMatch(rawData)) {
+      debugPrint('🧪 $_tag: Processing 2-char offline device: $rawData');
+      final stx = String.fromCharCode(0x02);
+      final etx = String.fromCharCode(0x03);
+      messages.add(stx + rawData + etx);
+      return messages;
+    }
 
     // Remove STX and ETX markers, then split by STX
     String cleanData = rawData.replaceAll(String.fromCharCode(stx), '');
@@ -333,6 +358,20 @@ class EnhancedZoneParser {
   static EnhancedParsingResult _parseSingleMessage(String message) {
     try {
       debugPrint('📊 $_tag: Parsing message: ${message.length} chars');
+
+      // Handle 6-char device data (STX + 6 chars + ETX = 8 chars total)
+      if (message.length == 8) {
+        final deviceData = message.substring(1, 7); // Extract 6 chars between STX and ETX
+        debugPrint('🧪 $_tag: Parsing 6-char device data: $deviceData');
+        return _parseSingleDeviceFrom6Char(deviceData);
+      }
+
+      // Handle 2-char device data (STX + 2 chars + ETX = 4 chars total)
+      if (message.length == 4) {
+        final addressData = message.substring(1, 3); // Extract 2 chars between STX and ETX
+        debugPrint('🧪 $_tag: Parsing 2-char offline device: $addressData');
+        return _parseOfflineDevice(addressData);
+      }
 
       // Step 1: Extract checksum (first 4 chars after stx)
       final checksum = message.substring(1, 5).toUpperCase();
@@ -358,6 +397,171 @@ class EnhancedZoneParser {
     } catch (e) {
       debugPrint('❌ $_tag: Single message parsing error: $e');
       return _createErrorResult('SINGLE_MESSAGE_ERROR', 'Single message parsing failed: $e');
+    }
+  }
+
+  /// Parse single device from 6-char format (AA BB CC)
+  static EnhancedParsingResult _parseSingleDeviceFrom6Char(String testData) {
+    try {
+      debugPrint('🧪 $_tag: Parsing single device from 6-char: $testData');
+
+      final address = testData.substring(0, 2);
+      final troubleStatus = testData.substring(2, 4); // BB - Trouble status
+      final alarmBellStatus = testData.substring(4, 6); // CC - Alarm + Bell status
+
+      // Parse trouble zones (BB byte)
+      final troubleByte = int.parse(troubleStatus, radix: 16);
+
+      // Parse alarm zones + bell (CC byte)
+      final alarmBellByte = int.parse(alarmBellStatus, radix: 16);
+      final bellActive = (alarmBellByte & 0x20) != 0; // Bit 5 = Bell status
+      final alarmZones = alarmBellByte & 0x1F; // Lower 5 bits = alarm zones
+
+      final List<ZoneStatus> zones = [];
+
+      for (int zoneIndex = 0; zoneIndex < 5; zoneIndex++) {
+        final zoneBit = 1 << zoneIndex;
+
+        final hasTrouble = (troubleByte & zoneBit) != 0;
+        final hasAlarm = (alarmZones & zoneBit) != 0;
+        final isActive = hasAlarm || hasTrouble;
+
+        String description = '';
+        if (hasAlarm && hasTrouble) {
+          description = 'Zone ${zoneIndex + 1} - ALARM & TROUBLE';
+        } else if (hasAlarm) {
+          description = 'Zone ${zoneIndex + 1} - ALARM ACTIVE';
+        } else if (hasTrouble) {
+          description = 'Zone ${zoneIndex + 1} - TROUBLE DETECTED';
+        } else {
+          description = 'Zone ${zoneIndex + 1} - Normal';
+        }
+
+        zones.add(ZoneStatus(
+          zoneNumber: zoneIndex + 1,
+          isActive: isActive,
+          hasTrouble: hasTrouble,
+          hasAlarm: hasAlarm,
+          description: description,
+        ));
+      }
+
+      // Determine device status
+      final isConnected = true; // 6-digit format means online
+      final hasTrouble = troubleByte != 0x00;
+      final hasAlarm = alarmZones != 0x00;
+
+      final deviceStatus = DeviceStatus(
+        hasPower: isConnected,
+        hasTrouble: hasTrouble,
+        hasAlarm: hasAlarm,
+        outputBellActive: bellActive,
+      );
+
+      final device = EnhancedDevice(
+        address: address,
+        isConnected: isConnected,
+        zones: zones,
+        deviceStatus: deviceStatus,
+        timestamp: DateTime.now(),
+      );
+
+      debugPrint('✅ $_tag: Single device parsed: Address $address, Connected $isConnected');
+      debugPrint('🔍 $_tag: Zone 1 - Alarm: ${zones[0].hasAlarm}, Trouble: ${zones[0].hasTrouble}, Bell: $bellActive');
+
+      return EnhancedParsingResult(
+        cycleType: 'single_device',
+        checksum: '',
+        status: _getDeviceStatus(hasAlarm, hasTrouble, bellActive),
+        totalDevices: 1,
+        connectedDevices: 1,
+        disconnectedDevices: 0,
+        devices: [device],
+        rawData: {
+          'device_data': testData,
+          'address': address,
+          'trouble_status': troubleStatus,
+          'alarm_bell_status': alarmBellStatus,
+          'bell_active': bellActive,
+        },
+        timestamp: DateTime.now(),
+      );
+
+    } catch (e) {
+      debugPrint('❌ $_tag: Single device parsing error: $e');
+      return _createErrorResult('SINGLE_DEVICE_ERROR', 'Single device parsing failed: $e');
+    }
+  }
+
+  /// Parse offline device from 2-char address
+  static EnhancedParsingResult _parseOfflineDevice(String addressData) {
+    try {
+      debugPrint('🧪 $_tag: Parsing offline device: $addressData');
+
+      final address = addressData.toUpperCase();
+
+      // Create 5 zones, all inactive
+      final List<ZoneStatus> zones = [];
+      for (int zoneIndex = 0; zoneIndex < 5; zoneIndex++) {
+        zones.add(ZoneStatus(
+          zoneNumber: zoneIndex + 1,
+          isActive: false,
+          hasTrouble: false,
+          hasAlarm: false,
+          description: 'Zone ${zoneIndex + 1} - Device Offline',
+        ));
+      }
+
+      // Device is offline
+      final deviceStatus = DeviceStatus(
+        hasPower: false,
+        hasTrouble: false,
+        hasAlarm: false,
+        outputBellActive: false,
+      );
+
+      final device = EnhancedDevice(
+        address: address,
+        isConnected: false,
+        zones: zones,
+        deviceStatus: deviceStatus,
+        timestamp: DateTime.now(),
+      );
+
+      debugPrint('✅ $_tag: Offline device parsed: Address $address, Status: OFFLINE');
+
+      return EnhancedParsingResult(
+        cycleType: 'offline_device',
+        checksum: '',
+        status: 'offline',
+        totalDevices: 1,
+        connectedDevices: 0,
+        disconnectedDevices: 1,
+        devices: [device],
+        rawData: {
+          'address_data': addressData,
+          'address': address,
+          'status': 'offline',
+        },
+        timestamp: DateTime.now(),
+      );
+
+    } catch (e) {
+      debugPrint('❌ $_tag: Offline device parsing error: $e');
+      return _createErrorResult('OFFLINE_DEVICE_ERROR', 'Offline device parsing failed: $e');
+    }
+  }
+
+  /// Get device status string based on conditions
+  static String _getDeviceStatus(bool hasAlarm, bool hasTrouble, bool bellActive) {
+    if (hasAlarm && bellActive) {
+      return 'alarm_with_bell';
+    } else if (hasAlarm) {
+      return 'alarm_silent';
+    } else if (hasTrouble) {
+      return 'trouble';
+    } else {
+      return 'normal';
     }
   }
 
@@ -464,15 +668,12 @@ class EnhancedZoneParser {
       final List<ZoneStatus> zones = [];
 
       for (int zoneIndex = 0; zoneIndex < 5; zoneIndex++) {
-        final zoneBit = 1 << zoneIndex;
-        final isActive = (statusByte & zoneBit) != 0;
-
         // Map zone bits to specific statuses (customize based on your system)
         final zoneStatus = _mapZoneStatus(statusByte, zoneIndex);
 
         zones.add(ZoneStatus(
           zoneNumber: zoneIndex + 1,
-          isActive: isActive,
+          isActive: zoneStatus.isActive, // Use isActive from _mapZoneStatus for consistency
           hasTrouble: zoneStatus.hasTrouble,
           hasAlarm: zoneStatus.hasAlarm,
           description: zoneStatus.description,

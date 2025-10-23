@@ -768,7 +768,7 @@ class _ZoneMonitoringPageState extends State<ZoneMonitoringPage> with AutomaticK
                         decoration: BoxDecoration(
                           color: _getZoneColorFromSystem(
                             zoneNumber,
-                            Provider.of<FireAlarmData>(context, listen: false),
+                            Provider.of<FireAlarmData>(context, listen: true),
                           ),
                           border: Border.all(
                             color: _selectedZoneNumber == zoneNumber

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'dart:async';
@@ -33,6 +34,27 @@ class ZoneStatus {
   });
 }
 
+// Enhanced Zone Status for integration with enhanced parser
+class EnhancedZoneStatus {
+  final String deviceAddress;
+  final int zoneNumber;
+  final bool isActive;
+  final bool hasAlarm;
+  final bool hasTrouble;
+  final String description;
+  final DateTime lastUpdate;
+
+  EnhancedZoneStatus({
+    required this.deviceAddress,
+    required this.zoneNumber,
+    required this.isActive,
+    required this.hasAlarm,
+    required this.hasTrouble,
+    required this.description,
+    required this.lastUpdate,
+  });
+}
+
 // Data bersama untuk aplikasi Fire Alarm Monitoring
 class FireAlarmData extends ChangeNotifier {
   bool _mounted = true;
@@ -46,7 +68,7 @@ class FireAlarmData extends ChangeNotifier {
     super.dispose();
   }
   // Firebase Database reference
-  final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref();
+  final DatabaseReference _databaseRef = FirebaseDatabase.instanceFor(app: Firebase.app('fireAlarmApp')).ref();
   DatabaseReference get databaseRef => _databaseRef;
 
   // Get log handler for external access
@@ -735,12 +757,31 @@ class FireAlarmData extends ChangeNotifier {
     });
       // LISTENER BARU: Listen for all_slave_data changes from Firebase
     _databaseRef.child('all_slave_data').onValue.listen((event) {
+      debugPrint('🔥 Firebase all_slave_data listener TRIGGERED!');
+      debugPrint('🔥 Event type: ${event.runtimeType}');
+      debugPrint('🔥 Snapshot exists: ${event.snapshot.exists}');
+      debugPrint('🔥 Snapshot value: ${event.snapshot.value}');
+
       final data = event.snapshot.value as Map<dynamic, dynamic>?;
       if (data != null && data.containsKey('raw_data')) {
         String rawData = data['raw_data'] as String;
         debugPrint('📡 Received all_slave_data: $rawData');
 
-        _parseAllSlaveData(rawData);
+        // Parse the complete data stream using enhanced parser
+        final parseResult = EnhancedZoneParser.parseCompleteDataStream(rawData);
+        debugPrint('✅ Successfully parsed ${parseResult.devices.length} enhanced devices');
+        debugPrint('✅ Parse result status: ${parseResult.status}');
+        debugPrint('✅ Parse result cycle type: ${parseResult.cycleType}');
+
+        // Update enhanced zone data - this will handle integration and UI updates
+        updateEnhancedZoneData(parseResult);
+      } else {
+        debugPrint('❌ No valid data found in all_slave_data');
+        if (data != null) {
+          debugPrint('📋 Data keys found: ${data.keys.toList()}');
+        } else {
+          debugPrint('📋 Data is null');
+        }
       }
     });
     
@@ -1070,6 +1111,77 @@ class FireAlarmData extends ChangeNotifier {
   // Bell trouble status tracking
   final Map<int, bool> _moduleBellTroubleStatus = {};
 
+  // Enhanced zone data tracking
+  final Map<String, EnhancedDevice> _enhancedDevices = {};
+  final Map<String, EnhancedZoneStatus> _enhancedZoneStatus = {};
+
+  // Update enhanced zone data from parser results
+  void updateEnhancedZoneData(EnhancedParsingResult parseResult) {
+    if (!_mounted) return;
+
+    debugPrint('🔄 UPDATE ENHANCED ZONE DATA CALLED!');
+    debugPrint('🔄 Parse result devices: ${parseResult.devices.length}');
+    debugPrint('🔄 Parse result status: ${parseResult.status}');
+    debugPrint('🔄 Parse result cycle type: ${parseResult.cycleType}');
+    debugPrint('🔄 Parse result timestamp: ${parseResult.timestamp}');
+
+    // Clear previous data
+    _enhancedDevices.clear();
+    _enhancedZoneStatus.clear();
+
+    // Update devices and zones
+    for (var device in parseResult.devices) {
+      final deviceKey = device.address.toLowerCase();
+      _enhancedDevices[deviceKey] = device;
+
+      // Update individual zones
+      for (var zone in device.zones) {
+        final zoneKey = '${deviceKey}_zone${zone.zoneNumber}';
+        _enhancedZoneStatus[zoneKey] = EnhancedZoneStatus(
+          deviceAddress: device.address,
+          zoneNumber: zone.zoneNumber,
+          isActive: zone.isActive,
+          hasAlarm: zone.hasAlarm,
+          hasTrouble: zone.hasTrouble,
+          description: zone.description ?? 'Zone ${zone.zoneNumber}',
+          lastUpdate: DateTime.now(),
+        );
+
+        // Special logging for zone 1
+        if (zone.zoneNumber == 1) {
+          debugPrint('🔥 Zone 1 Update: Device=${device.address}, Active=${zone.isActive}, Alarm=${zone.hasAlarm}, Trouble=${zone.hasTrouble}');
+          debugPrint('📝 Zone 1 Description: ${zone.description}');
+        }
+      }
+    }
+
+    debugPrint('✅ Enhanced zone data updated: ${_enhancedZoneStatus.length} total zones, ${_enhancedDevices.length} devices');
+    notifyListeners();
+  }
+
+  // Get enhanced zone status by device address and zone number
+  EnhancedZoneStatus? getEnhancedZoneStatus(String deviceAddress, int zoneNumber) {
+    final zoneKey = '${deviceAddress.toLowerCase()}_zone$zoneNumber';
+    return _enhancedZoneStatus[zoneKey];
+  }
+
+  // Get enhanced zone status by absolute zone number (1-315)
+  EnhancedZoneStatus? getEnhancedZoneStatusByAbsoluteNumber(int absoluteZoneNumber) {
+    // Calculate device address and zone number from absolute zone number
+    final deviceIndex = (absoluteZoneNumber - 1) ~/ 5;
+    final zoneInDevice = (absoluteZoneNumber - 1) % 5 + 1;
+
+    // Convert device index to hex address (01-3F)
+    final deviceAddress = deviceIndex.toRadixString(16).padLeft(2, '0').toUpperCase();
+
+    return getEnhancedZoneStatus(deviceAddress, zoneInDevice);
+  }
+
+  // Get enhanced device by address
+  EnhancedDevice? getEnhancedDevice(String deviceAddress) {
+    return _enhancedDevices[deviceAddress.toLowerCase()];
+  }
+
   // Method to check if there are any trouble zones in the system
   bool hasTroubleZones() {
     return getSystemStatus('Trouble') || hasBellTrouble();
@@ -1078,6 +1190,31 @@ class FireAlarmData extends ChangeNotifier {
   // Method to check if there are any alarm zones in the system
   bool hasAlarmZones() {
     return getSystemStatus('Alarm') || hasBellTrouble(); // Bell trouble should trigger alarm
+  }
+
+  // TEST METHOD: Manually trigger Firebase update for testing
+  Future<void> testFirebaseUpdate() async {
+    try {
+      debugPrint('🧪 TESTING: Manual Firebase update with test data');
+
+      // Test data for device AA with zone 1 alarm
+      final testData = {
+        'raw_data': '010200', // AA BB CC format with zone 1 alarm
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'test': true,
+      };
+
+      await _databaseRef.child('all_slave_data').set(testData);
+      debugPrint('✅ Test data sent to Firebase all_slave_data');
+
+      // Wait a bit then check
+      Future.delayed(const Duration(seconds: 2), () {
+        debugPrint('🧪 TEST: Check if listener was triggered');
+      });
+
+    } catch (e) {
+      debugPrint('❌ TEST: Error sending test data to Firebase: $e');
+    }
   }
 
   // Method to get list of active alarm zones

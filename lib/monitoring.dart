@@ -30,11 +30,11 @@ class _MonitoringPageState extends State<MonitoringPage> {
   }
 
 
-  // Get zone color based on system status
+  // Get zone color based on enhanced zone data
   Color _getZoneColorFromSystem(int zoneNumber) {
-    final fireAlarmData = Provider.of<FireAlarmData>(context, listen: false);
+    final fireAlarmData = Provider.of<FireAlarmData>(context, listen: true);
 
-    // Check if system is in alarm
+    // Check if system is in alarm first
     if (fireAlarmData.getSystemStatus('Alarm')) {
       return Colors.red;
     }
@@ -54,8 +54,53 @@ class _MonitoringPageState extends State<MonitoringPage> {
       return Colors.yellow.shade700;
     }
 
+    // Check enhanced zone data for individual zone status
+    // Try to find zone in enhanced data - assume device address "01" for zone 1
+    final deviceAddress = _getDeviceAddressForZone(zoneNumber);
+    final enhancedZoneStatus = fireAlarmData.getEnhancedZoneStatus(deviceAddress, zoneNumber);
+
+    if (enhancedZoneStatus != null) {
+      debugPrint('🎨 Zone $zoneNumber color from enhanced data: Active=${enhancedZoneStatus.isActive}, Alarm=${enhancedZoneStatus.hasAlarm}, Trouble=${enhancedZoneStatus.hasTrouble}');
+
+      // Special logging for zone 1
+      if (zoneNumber == 1) {
+        debugPrint('🔥 ZONE 1 COLOR CALCULATION: Device=$deviceAddress, Active=${enhancedZoneStatus.isActive}, Alarm=${enhancedZoneStatus.hasAlarm}, Trouble=${enhancedZoneStatus.hasTrouble}');
+        debugPrint('📝 Zone 1 Description: ${enhancedZoneStatus.description}');
+      }
+
+      if (enhancedZoneStatus.hasAlarm) {
+        if (zoneNumber == 1) debugPrint('🚨 ZONE 1: Returning RED (Alarm)');
+        return Colors.red;
+      }
+      if (enhancedZoneStatus.hasTrouble) {
+        if (zoneNumber == 1) debugPrint('⚠️ ZONE 1: Returning ORANGE (Trouble)');
+        return Colors.orange;
+      }
+      if (enhancedZoneStatus.isActive) {
+        if (zoneNumber == 1) debugPrint('💡 ZONE 1: Returning YELLOW (Active)');
+        return Colors.yellow.shade600; // Active but no alarm/trouble
+      }
+    }
+
+    // Special logging for zone 1 if no enhanced data found
+    if (zoneNumber == 1) {
+      debugPrint('❌ ZONE 1: No enhanced data found, returning WHITE (Normal)');
+    }
+
     // Default white for normal status
     return Colors.white;
+  }
+
+  // Get device address for a given zone number (simplified mapping)
+  String _getDeviceAddressForZone(int zoneNumber) {
+    // This is a simplified mapping - adjust based on your system
+    // For now, assume zones 1-5 are in device "01"
+    if (zoneNumber <= 5) {
+      return "01";
+    }
+    // Zones 6-10 in device "02", etc.
+    final deviceNumber = ((zoneNumber - 1) ~/ 5) + 1;
+    return deviceNumber.toString().padLeft(2, '0');
   }
 
   // Get zone border color
@@ -244,6 +289,9 @@ class _MonitoringPageState extends State<MonitoringPage> {
               builder: (context) {
                 final fireAlarmData = context.watch<FireAlarmData>();
                 final numModules = fireAlarmData.numberOfModules;
+
+                // Debug logging for zone container rebuild
+                debugPrint('🏗️ Zone container rebuilding - Modules: $numModules');
                 final screenHeight = MediaQuery.of(context).size.height;
                 final isDesktop = _isDesktop(context);
 
