@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "DDSMobile",
-    "slug": "DDSMobile",
+    "slug": "ddsmobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -43,6 +43,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c0e3fd52-a0eb-4688-b611-9a3e59fc159a"
+      }
+    },
+    "owner": "kuyangcepirit"
   }
 }
