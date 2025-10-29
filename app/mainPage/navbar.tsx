@@ -16,7 +16,7 @@ const NavBar = () => {
   return (
     <View style={styles.navbarContainer}>
       <View style={styles.headerSection}>
-        <Text style={styles.header}>PROJECT CONTROL</Text>
+        <Text style={styles.header}>PROJECT CONTROLL</Text>
         <Text style={styles.projectName}>Gedung Atria</Text>
         <Text style={styles.usage}>Usage Billing: </Text>
       </View>
