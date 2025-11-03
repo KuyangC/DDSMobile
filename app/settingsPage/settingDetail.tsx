@@ -3,95 +3,114 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const SettingsDetail = () => {
-  const router = useRouter();
+interface SettingDetailProps {
+    onMenuPress: (menu: string) => void;
+}
 
-  let [fontsLoaded] = useFonts({
-    Poppins_700Bold,
-    Poppins_500Medium,
-    Poppins_600SemiBold
-  });
 
-  if (!fontsLoaded) {
-    return null;
-  }
+const SettingsDetail: React.FC<SettingDetailProps> = ({ onMenuPress }) => {
+    let [fontsLoaded] = useFonts({
+        Poppins_700Bold,
+        Poppins_500Medium,
+        Poppins_600SemiBold
+    });
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.navbarContainer}>
-        <Text style={styles.header}>SETTINGS</Text>
-      </View>
-      <View>
-        <TouchableOpacity style={styles.settingsButton}
-          onPress={() => router.push('./')}
-        >
-          <Text style={styles.buttonText}>CREDENTIALS</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.settingsButton}
-          onPress={() => router.push('./')}
-        >
-          <Text style={styles.buttonText}>USER ACCOUNT</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.settingsButton}
-          onPress={() => router.push('./')}
-        >
-          <Text style={styles.buttonText}>LOG DATA</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.bottomSection}>
-        <TouchableOpacity style={styles.logButton}
-          onPress={() => router.push('./')}
-        >
-          <Text style={styles.buttonText}>LOGOUT</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    if (!fontsLoaded) {
+        return null;
+    }
+    
+    const router = useRouter();
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.headerSection}>
+                <Text style={styles.header}>SETTINGS</Text>
+            </View>
+
+            <View style={styles.menuSection}>
+                <TouchableOpacity 
+                    style={styles.settingsButton}
+                    onPress={() => onMenuPress('credentials')}
+                >
+                    <Text style={styles.buttonText}>CREDENTIALS</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                    style={styles.settingsButton}
+                    onPress={() => onMenuPress('userAccount')}
+                >
+                    <Text style={styles.buttonText}>USER ACCOUNT</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                    style={styles.settingsButton}
+                    onPress={() => onMenuPress('project')}
+                >
+                    <Text style={styles.buttonText}>PROJECT</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={styles.settingsButton}
+                    onPress={() => onMenuPress('logData')}
+                >
+                    <Text style={styles.buttonText}>LOG DATA</Text>
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.bottomSection}>
+                <TouchableOpacity 
+                style={[styles.settingsButton, styles.logButton]}
+                onPress={() => router.push('../authPage/loginPage')}
+                >
+                    <Text style={styles.buttonText}>LOGOUT</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
 };
 
-export default SettingsDetail;
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f0f0',
-    padding: 8,
-    alignItems: 'center',
-  },
-  navbarContainer: {
-    alignItems: 'center',
-    marginBottom: -10,
-  },
-  header: {
-    fontSize: 26,
-    fontFamily: "Poppins_700Bold",
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  settingsButton: {
-    backgroundColor: '#11B653',
-    paddingVertical: 8,
-    paddingHorizontal: 50,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 100,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  buttonText: {
-    fontSize: 20,
-    fontFamily: "Poppins_600SemiBold",
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  bottomSection: {
-    marginTop: 10,
-    alignItems: 'center',
-  },
-  logButton: {
-    backgroundColor: '#FF3B30',
-  },
+    container: {
+        flex: 1,
+        backgroundColor: '#f0f0f0',
+        padding: 8,
+    },
+    headerSection: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    header: {
+        fontSize: 26,
+        fontFamily: "Poppins_700Bold",
+        textAlign: 'center',
+        marginBottom: 4,
+    },
+    menuSection: {
+        alignItems: 'center',
+    },
+    settingsButton: {
+        backgroundColor: '#11B653',
+        paddingVertical: 12,
+        paddingHorizontal: 50,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 3,
+        marginBottom: 10,
+        width: '100%',
+    },
+    buttonText: {
+        fontSize: 18,
+        fontFamily: "Poppins_600SemiBold",
+        color: '#FFFFFF',
+    },
+    bottomSection: {
+        marginTop: 20,
+        alignItems: 'center',
+    },
+    logButton: {
+        backgroundColor: '#FF3B30',
+    },
 });
+
+export default SettingsDetail;
