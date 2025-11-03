@@ -1,8 +1,11 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { useFonts, Poppins_700Bold, Poppins_500Medium, Poppins_600SemiBold } from '@expo-google-fonts/poppins';
+import { useRouter } from 'expo-router';
 import React from 'react'
 
 const NavBar = () => {
+  const router = useRouter();
+
   let [fontsLoaded] = useFonts({
     Poppins_700Bold,
     Poppins_500Medium,
@@ -12,6 +15,7 @@ const NavBar = () => {
   if (!fontsLoaded) {
     return null;
   }
+
 
   return (
     <View style={styles.navbarContainer}>
@@ -137,9 +141,13 @@ const NavBar = () => {
           style={styles.imageBottom} 
         />
         */}
-        <View style={styles.settingsButton}>
-          <Text style={styles.settingsButtonText}>Settings</Text>
-        </View>
+        <TouchableOpacity 
+        style={styles.settingsButton}
+        onPress={() => router.push('./settingsPage/settings')}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.settingsButtonText}>Settings</Text>
+      </TouchableOpacity>
       </View>
     </View>
   );
