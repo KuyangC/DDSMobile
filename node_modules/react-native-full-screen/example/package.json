@@ -1,0 +1,13 @@
+{
+  "name": "example",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node node_modules/react-native/local-cli/cli.js start",
+    "setupDev" : "mkdir node_modules/react-native-full-screen/; rm -rf node_modules/react-native-full-screen/index.js node_modules/react-native-full-screen/android; ln -s  ../../../android/ node_modules/react-native-full-screen/android;ln -s  ../../../index.js node_modules/react-native-full-screen/index.js; cp ../package.json node_modules/react-native-full-screen/"
+  },
+  "dependencies": {
+    "react-native": "^0.21.0",
+    "react-native-router-flux": "^2.3.9"
+  }
+}

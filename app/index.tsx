@@ -1,10 +1,12 @@
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, Platform, StatusBar } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from "expo-router";
+import { useState, useEffect} from "react";
 import NavBar from "./mainPage/navbar";
 import ModuleTable from "./mainPage/areaTable";
 
 const Index = () => {
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <Stack.Screen options={{ header: () => null }} />

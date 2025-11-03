@@ -1,0 +1,27 @@
+{
+  "name": "react-native-full-screen",
+  "version": "0.0.4",
+  "description": "React Native FullScreen api and element",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Anthonyzou/react-native-full-screen.git"
+  },
+  "keywords": [
+    "react-native",
+    "android",
+    "react-component"
+  ],
+  "author": "Anthony Ou",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Anthonyzou/react-native-full-screen/issues"
+  },
+  "homepage": "https://github.com/Anthonyzou/react-native-full-screen#readme",
+  "dependencies": {
+    "debounce": "^1.0.0"
+  }
+}
