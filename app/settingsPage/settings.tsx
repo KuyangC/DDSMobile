@@ -1,25 +1,32 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack } from "expo-router";
-import React from 'react'
+import React, { useState } from 'react'
 import SettingDetail from '../settingsPage/settingDetail'
+import SettingsContent from '../settingsPage/settingContent'
 
+const Settings = () => {
+    const [activeMenu, setActiveMenu] = useState<string>('');
 
-const settings = () => {
     return (
         <SafeAreaView style={styles.safeArea}>
             <Stack.Screen options={{ header: () => null }} />
             <View style={styles.container}>
-                {/* Navbar 280px x 800px */}
+                {/* Navbar Settings di kiri */}
                 <View style={styles.settingsWrapper}>
-                    <SettingDetail/>
+                    <SettingDetail onMenuPress={setActiveMenu} />
+                </View>
+
+                {/* Content di kanan */}
+                <View style={styles.content}>
+                    <SettingsContent activeMenu={activeMenu} />
                 </View>
             </View>
         </SafeAreaView>
     )
 }
 
-export default settings
+export default Settings
 
 const styles = StyleSheet.create({
     safeArea: {
