@@ -1,17 +1,20 @@
-import { StyleSheet, View, Platform, StatusBar } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from "expo-router";
-import { useState, useEffect} from "react";
+import { useFirebaseLogger } from './hooks/useFirebaseLogger';
 import NavBar from "./mainPage/navbar";
 import ModuleTable from "./mainPage/areaTable";
 
 const Index = () => {
 
+  useFirebaseLogger();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <Stack.Screen options={{ header: () => null }} />
+      
       <View style={styles.container}>
-        {/* Navbar 280px x 800px */}
+        {/* Navbar */}
         <View style={styles.navbarWrapper}>
           <NavBar />
         </View>
@@ -24,8 +27,6 @@ const Index = () => {
     </SafeAreaView>
   );
 }
-
-export default Index;
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -45,3 +46,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
 });
+
+export default Index;
