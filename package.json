@@ -8,6 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "env:setup": "cp .env.example .env && echo 'Please edit .env file with your actual credentials",
     "lint": "expo lint"
   },
   "dependencies": {
