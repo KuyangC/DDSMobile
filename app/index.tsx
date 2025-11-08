@@ -2,8 +2,8 @@ import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from "expo-router";
 import { useFirebaseLogger } from './hooks/useFirebaseLogger';
-import NavBar from "./mainPage/navbar";
-import ModuleTable from "./mainPage/areaTable";
+import NavBar from "./pages/mainPage/navbar";
+import ModuleTable from "./pages/mainPage/areaTable";
 
 const Index = () => {
 

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { database } from '../config/firebaseConfig';
+import { db as database } from '../config/firebaseConfig'; // Corrected import: db is exported, but we alias it to database for consistency in this file.
 import { ref, set, onValue, off } from 'firebase/database';
 
 export const useFirebaseLogger = () => {
@@ -22,7 +22,7 @@ export const useFirebaseLogger = () => {
           status: 'connected',
           timestamp: new Date().toISOString(),
           environment: process.env.EXPO_PUBLIC_APP_ENV || 'development',
-          platform: 'React Native'
+          platform: 'Mobile App'
         };
 
         // Test write operation

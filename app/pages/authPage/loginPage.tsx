@@ -1,24 +1,42 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Image, 
+  Dimensions,
+  Alert 
+} from 'react-native';
+import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack } from "expo-router";
 import { useFonts, Poppins_700Bold, Poppins_600SemiBold, Poppins_500Medium } from '@expo-google-fonts/poppins';
+import { useAuth } from '../../hooks/useAuth';
+import { db } from '../../config/firebaseConfig';
+import { ref, set, get } from 'firebase/database';
 
 // --- DIMENSI DAN SKALA FIX ---
 const baseWidth = 1280;
 const baseHeight = 800;
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const scale = screenWidth / baseWidth;
+
 const scaleSize = (size) => {
-  return size * scale;
+  return Math.round(size * scale);
 };
 // --- AKHIR DIMENSI DAN SKALA ---
 
 const Login = () => {
   const router = useRouter();
+  const { login, loading } = useAuth();
   
-  let [fontsLoaded] = useFonts({
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+
+  const [fontsLoaded] = useFonts({
     Poppins_700Bold,
     Poppins_600SemiBold,
     Poppins_500Medium
@@ -27,6 +45,62 @@ const Login = () => {
   if (!fontsLoaded) {
     return null;
   }
+
+  const handleLogin = async () => {
+    if (!formData.email || !formData.password) {
+      Alert.alert('Error', 'Please fill all fields');
+      return;
+    }
+
+    const result = await login(formData.email, formData.password);
+    
+    if (result.success) {
+      Alert.alert('Success', 'Login successful!');
+      router.push('/');
+    } else {
+      Alert.alert('Error', result.error);
+    }
+  };
+
+  const handleSignUpPress = () => {
+    router.push('/pages/authPage/registerPage');
+  };
+
+  const handleForgotPasswordPress = () => {
+    // TODO: Implement forgot password functionality
+    Alert.alert('Info', 'Forgot password feature coming soon!');
+  };
+
+  const testFirebaseConnection = async () => {
+    Alert.alert('Test Initialized', 'The connection test function has been called.');
+    console.log('testFirebaseConnection function called.');
+    try {
+      console.log('Defining test reference...');
+      const testRef = ref(db, 'testConnection');
+      const testData = {
+        message: 'Connection test from login page',
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('Attempting to write to database...');
+      await set(testRef, testData);
+      console.log('Write successful. Attempting to read back...');
+      
+      const snapshot = await get(testRef);
+      console.log('Read operation completed.');
+
+      if (snapshot.exists()) {
+        console.log('Snapshot exists.');
+        Alert.alert('Firebase Connection Test', `Success: Successfully wrote and read data. ${JSON.stringify(snapshot.val())}`);
+      } else {
+        console.log('Snapshot does not exist.');
+        Alert.alert('Firebase Connection Test', 'Failed: Wrote data but could not read it back.');
+      }
+    } catch (error: any) {
+      console.error('An error occurred during the Firebase connection test:', error);
+      Alert.alert('Firebase Connection Test Failed', `An error occurred: ${JSON.stringify(error)}`);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -38,7 +112,12 @@ const Login = () => {
             <View style={styles.formWrapper}>
               {/* Logo DDS di bagian atas */}
               <View style={styles.logoContainer}>
-                <Image style={styles.logoImage} source={require('@/assets/images/base.png')} />
+                <Image 
+                  style={styles.logoImage} 
+                  source={require('@/assets/images/base.png')} 
+                  accessibilityLabel="DDS Logo"
+                  resizeMode="contain"
+                />
                 <Text style={styles.subtitle}>FIRE ALARM SYSTEM</Text>
               </View>
               
@@ -55,6 +134,10 @@ const Login = () => {
                     placeholderTextColor="#999"
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    autoComplete="email"
+                    textContentType="emailAddress"
+                    value={formData.email}
+                    onChangeText={(text) => setFormData({...formData, email: text})}
                   />
                 </View>
 
@@ -66,30 +149,55 @@ const Login = () => {
                     placeholder="yourpassword"
                     placeholderTextColor="#999"
                     secureTextEntry
+                    autoComplete="password"
+                    textContentType="password"
+                    value={formData.password}
+                    onChangeText={(text) => setFormData({...formData, password: text})}
                   />
                 </View>
 
                 {/* Link Lupa Password */}
-                <TouchableOpacity style={styles.forgotPasswordContainer}>
+                <TouchableOpacity 
+                  style={styles.forgotPasswordContainer}
+                  onPress={handleForgotPasswordPress}
+                  accessibilityLabel="Forgot password"
+                >
                   <Text style={styles.forgotPasswordText}>Forget Password?</Text>
                 </TouchableOpacity>
 
                 {/* Tombol Sign In */}
                 <TouchableOpacity 
-                  style={styles.loginButton}
-                  onPress={() => router.push('/')}
+                  style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+                  onPress={handleLogin}
+                  disabled={loading}
+                  accessibilityLabel="Sign in button"
+                  accessibilityRole="button"
                 >
-                  <Text style={styles.loginButtonText}>Sign - in</Text>
+                  <Text style={styles.loginButtonText}>
+                    {loading ? 'Signing in...' : 'Sign - in'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Tombol Test Connection */}
+                <TouchableOpacity
+                  style={styles.debugButton}
+                  onPress={testFirebaseConnection}
+                >
+                  <Text style={styles.loginButtonText}>Test Connection</Text>
                 </TouchableOpacity>
 
                 {/* Link Sign Up */}
                 <View style={styles.signupContainer}>
-                  <Text 
-                  style={styles.signupText}
-                  onPress={() => router.push('/authPage/registerPage')}
-                  >
+                  <Text style={styles.signupText}>
                     Dont have an account?{' '}
-                    <Text style={styles.signupLink}>Sign up</Text>
+                    <Text 
+                      style={styles.signupLink}
+                      onPress={handleSignUpPress}
+                      accessibilityLabel="Sign up link"
+                      accessibilityRole="link"
+                    >
+                      Sign up
+                    </Text>
                   </Text>
                 </View>
               </View>
@@ -102,6 +210,7 @@ const Login = () => {
               source={require('@/assets/images/login.png')}
               style={styles.backgroundImage}    
               resizeMode="cover"
+              accessibilityLabel="Login background"
             />
           </View>
         </View>
@@ -137,22 +246,18 @@ const styles = StyleSheet.create({
   },
   formWrapper: {
     width: '100%',
-    // Menyelaraskan konten ke atas
     justifyContent: 'flex-start',
   },
-  // Container baru untuk logo dan subtitle
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: scaleSize(-30), // Jarak ke bawah menuju form
-    marginLeft: scaleSize(-40), // Penyesuaian posisi ke kiri
+    marginBottom: scaleSize(-30),
+    marginLeft: scaleSize(-40),
   },
-  // Style khusus untuk gambar logo
   logoImage: {
-    width: scaleSize(200), // Sesuaikan ukuran logo
-    height: scaleSize(200), // Sesuaikan ukuran logo
-    marginRight: scaleSize(10), // Jarak ke subtitle
-    resizeMode: 'contain',
+    width: scaleSize(200),
+    height: scaleSize(200),
+    marginRight: scaleSize(10),
   },
   subtitle: {
     fontSize: scaleSize(14),
@@ -210,6 +315,9 @@ const styles = StyleSheet.create({
     marginTop: scaleSize(10),
     marginBottom: scaleSize(20),
   },
+  loginButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
   loginButtonText: {
     fontSize: scaleSize(16),
     fontFamily: 'Poppins_600SemiBold',
@@ -231,6 +339,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  debugButton: {
+    backgroundColor: '#FFA500', // Orange color for debug button
+    paddingVertical: scaleSize(15),
+    borderRadius: scaleSize(8),
+    alignItems: 'center',
+    marginTop: scaleSize(10),
+    marginBottom: scaleSize(20),
+  },
 });
 
-export default Login;
+export default Login; 
