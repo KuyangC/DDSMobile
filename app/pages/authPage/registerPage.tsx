@@ -1,22 +1,40 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Dimensions, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Image, 
+  Dimensions, 
+  ScrollView,
+  Alert
+} from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts, Poppins_700Bold, Poppins_600SemiBold, Poppins_500Medium } from '@expo-google-fonts/poppins';
+import { useAuth } from '../../hooks/useAuth';
 
 // --- DIMENSI DAN SKALA FIX ---
 const baseWidth = 1280;
 const baseHeight = 800;
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const scale = screenWidth / baseWidth;
-const scaleSize = (size) => {
-  return size * scale;
+const scaleSize = (size: number) => {
+  return Math.round(size * scale);
 };
 // --- AKHIR DIMENSI DAN SKALA ---
 
 const Signup = () => {
   const router = useRouter();
+  const { register, loading, error } = useAuth();
   
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    repeatPassword: ''
+  });
+
   let [fontsLoaded] = useFonts({
     Poppins_700Bold,
     Poppins_600SemiBold,
@@ -26,6 +44,34 @@ const Signup = () => {
   if (!fontsLoaded) {
     return null;
   }
+
+  const handleRegister = async () => {
+    // Validasi form
+    if (!formData.email || !formData.password) {
+      Alert.alert('Error', 'Please fill all fields');
+      return;
+    }
+
+    if (formData.password !== formData.repeatPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    const result = await register(formData.email, formData.password);
+
+    if (result.success) {
+      Alert.alert('Success', 'Registration successful!');
+      // Redirect ke halaman login atau main app
+      router.push('/pages/authPage/loginPage');
+    } else {
+      Alert.alert('Registration Failed', result.error || 'Something went wrong');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -47,7 +93,7 @@ const Signup = () => {
                 </View>
                 
                 <View style={styles.formContainer}>
-                  <Text style={styles.welcomeText}>Welcome to our app</Text>
+                  <Text style={styles.welcomeText}>Create an account</Text>
                   <Text style={styles.tagline}>Your Safety Solution Partner</Text>
 
                   {/* Input Email */}
@@ -59,16 +105,8 @@ const Signup = () => {
                       placeholderTextColor="#999"
                       keyboardType="email-address"
                       autoCapitalize="none"
-                    />
-                  </View>
-
-                  {/* Input Role */}
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Role</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Select your role"
-                      placeholderTextColor="#999"
+                      value={formData.email}
+                      onChangeText={(text) => setFormData({...formData, email: text})}
                     />
                   </View>
 
@@ -77,9 +115,11 @@ const Signup = () => {
                     <Text style={styles.inputLabel}>Password</Text>
                     <TextInput
                       style={styles.textInput}
-                      placeholder="yourpassword"
+                      placeholder="minimum 6 characters"
                       placeholderTextColor="#999"
                       secureTextEntry
+                      value={formData.password}
+                      onChangeText={(text) => setFormData({...formData, password: text})}
                     />
                   </View>
 
@@ -91,21 +131,26 @@ const Signup = () => {
                       placeholder="confirm your password"
                       placeholderTextColor="#999"
                       secureTextEntry
+                      value={formData.repeatPassword}
+                      onChangeText={(text) => setFormData({...formData, repeatPassword: text})}
                     />
                   </View>
 
                   {/* Tombol Sign Up */}
                   <TouchableOpacity 
-                    style={styles.signupButton}
-                    onPress={() => router.push('/')}
+                    style={[styles.signupButton, loading && styles.signupButtonDisabled]}
+                    onPress={handleRegister}
+                    disabled={loading}
                   >
-                    <Text style={styles.signupButtonText}>Sign - up</Text>
+                    <Text style={styles.signupButtonText}>
+                      {loading ? 'Creating Account...' : 'Sign - up'}
+                    </Text>
                   </TouchableOpacity>
 
                   {/* Link Sign In */}
                   <View style={styles.signinContainer}>
                     <Text style={styles.signinText}
-                    onPress={() => router.push('/authPage/loginPage')}>
+                    onPress={() => router.push('/pages/authPage/loginPage')}>
                       Already have account?{' '}
                       <Text style={styles.signinLink}>Sign in</Text>
                     </Text>
@@ -147,18 +192,15 @@ const styles = StyleSheet.create({
   leftContainer: {
     flex: 1,
     backgroundColor: '#fff',
-    // Menghapus justifyContent agar ScrollView bisa mengatur posisi
     paddingHorizontal: scaleSize(102.4),
   },
   rightContainer: {
     flex: 1,
     overflow: 'hidden',
   },
-  // Style baru untuk ScrollView
   scrollView: {
     flex: 1,
   },
-  // Style baru untuk konten ScrollView
   scrollContent: {
     flexGrow: 1,
     paddingVertical: scaleSize(20),
@@ -186,7 +228,6 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: '100%',
-
   },
   welcomeText: {
     fontSize: scaleSize(24),
@@ -226,7 +267,10 @@ const styles = StyleSheet.create({
     borderRadius: scaleSize(8),
     alignItems: 'center',
     marginTop: scaleSize(10),
-    marginBottom: scaleSize(20),
+    marginBottom: scaleSize(10),
+  },
+  signupButtonDisabled: {
+    backgroundColor: '#ccc',
   },
   signupButtonText: {
     fontSize: scaleSize(16),
@@ -235,11 +279,6 @@ const styles = StyleSheet.create({
   },
   signinContainer: {
     alignItems: 'center',
-  },
-  signinText: {
-    fontSize: scaleSize(14),
-    fontFamily: 'Poppins_500Medium',
-    color: '#666',
   },
   signinLink: {
     color: '#11B653',

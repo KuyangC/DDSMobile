@@ -143,7 +143,7 @@ const NavBar = () => {
         */}
         <TouchableOpacity 
         style={styles.settingsButton}
-        onPress={() => router.push('./settingsPage/settings')}
+        onPress={() => router.push('./pages/settingsPage/settings')}
         activeOpacity={0.7}
       >
         <Text style={styles.settingsButtonText}>Settings</Text>
