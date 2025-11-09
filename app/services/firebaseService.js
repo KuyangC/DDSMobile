@@ -54,7 +54,7 @@ export const firebaseService = {
 
     try {
       const dbRef = ref(database, path);
-      const unsubscribe = onValue(dbRef, (snapshot) => {
+      onValue(dbRef, (snapshot) => {
         callback(snapshot.val());
       });
 

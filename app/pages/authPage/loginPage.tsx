@@ -19,10 +19,10 @@ import { ref, set, get } from 'firebase/database';
 // --- DIMENSI DAN SKALA FIX ---
 const baseWidth = 1280;
 const baseHeight = 800;
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 const scale = screenWidth / baseWidth;
 
-const scaleSize = (size) => {
+const scaleSize = (size: number) => {
   return Math.round(size * scale);
 };
 // --- AKHIR DIMENSI DAN SKALA ---

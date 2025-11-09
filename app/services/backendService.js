@@ -2,7 +2,6 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } f
 import { db } from '../config/firebaseConfig';
 import { 
   ref, 
-  push, 
   set, 
   query, 
   orderByChild, 
