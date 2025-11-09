@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-nat
 import useSlaveData from '../../hooks/useSlaveData';
 
 // Helper function to determine cell styles based on slave status
-const getStatusStyle = (status) => {
+const getStatusStyle = (status: string) => {
   switch (status) {
     case 'ALARM':
       return { backgroundColor: '#ff4d4d', color: 'white' }; // Red
@@ -18,7 +18,7 @@ const getStatusStyle = (status) => {
 };
 
 // Zone and Bell indicators
-const ZoneIndicator = ({ active, status, style }) => (
+const ZoneIndicator = ({ active, status, style }: { active: boolean; status: string; style: any }) => (
   <View style={[styles.cell, style]}>
     {active && <View style={[styles.indicator, getStatusStyle(status)]} />}
   </View>
@@ -28,8 +28,8 @@ const AreaTable = () => {
   const { slaveData, loading, error } = useSlaveData();
 
   // The main render function for a single table of slaves
-  const renderTable = (slaveNumbers) => {
-    const slaves = slaveNumbers.map(num => slaveData.slaves[num]).filter(Boolean);
+  const renderTable = (slaveNumbers: number[]) => {
+    const slaves = slaveNumbers.map((num: number) => (slaveData.slaves as any)[num]).filter(Boolean);
 
     return (
       <View style={styles.tableContainer}>
@@ -46,7 +46,7 @@ const AreaTable = () => {
         </View>
 
         {/* Data Rows */}
-        {slaves.map((slave) => {
+        {slaves.map((slave: any) => {
           const isAlarm = slave.status === 'ALARM';
           const isTrouble = slave.status === 'TROUBLE';
 
@@ -93,12 +93,12 @@ const AreaTable = () => {
     );
   };
 
-  if (loading && !slaveData.slaves[1]) { // Show loading only on initial fetch
+  if (loading && !(slaveData.slaves as any)[1]) { // Show loading only on initial fetch
     return <ActivityIndicator size="large" color="#0000ff" style={{ flex: 1, justifyContent: 'center' }} />;
   }
 
   if (error) {
-    return <Text style={styles.errorText}>Error loading data: {error.message}</Text>;
+    return <Text style={styles.errorText}>Error loading data: {(error as Error)?.message || 'Unknown error'}</Text>;
   }
 
   // Define the slave numbers for each of the 7 tables

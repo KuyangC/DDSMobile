@@ -9,6 +9,7 @@ interface SettingDetailProps {
 
 
 const SettingsDetail: React.FC<SettingDetailProps> = ({ onMenuPress }) => {
+    const router = useRouter();
     let [fontsLoaded] = useFonts({
         Poppins_700Bold,
         Poppins_500Medium,
@@ -18,8 +19,6 @@ const SettingsDetail: React.FC<SettingDetailProps> = ({ onMenuPress }) => {
     if (!fontsLoaded) {
         return null;
     }
-    
-    const router = useRouter();
 
     return (
         <View style={styles.container}>

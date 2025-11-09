@@ -1,10 +1,14 @@
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { useFonts, Poppins_700Bold, Poppins_500Medium, Poppins_600SemiBold } from '@expo-google-fonts/poppins';
 import { useRouter } from 'expo-router';
-import React from 'react'
+import React from 'react';
+import useSlaveData from '../../hooks/useSlaveData';
+import useProjectInfo from '../../hooks/useProjectInfo';
 
 const NavBar = () => {
   const router = useRouter();
+  const { slaveData } = useSlaveData();
+  const { projectInfo } = useProjectInfo();
 
   let [fontsLoaded] = useFonts({
     Poppins_700Bold,
@@ -16,13 +20,73 @@ const NavBar = () => {
     return null;
   }
 
+  // Function to determine system status based on all slaves
+  const getSystemStatus = () => {
+    const slaves = Object.values(slaveData.slaves || {} as any);
+    
+    // Check if any slave has ALARM status
+    if (slaves.some((slave: any) => slave.status === 'ALARM')) {
+      return {
+        text: 'SYSTEM ALARM',
+        backgroundColor: '#ff4d4d', // Red
+        color: '#FFFFFF'
+      };
+    }
+    
+    // Check if any slave has TROUBLE status
+    if (slaves.some((slave: any) => slave.status === 'TROUBLE')) {
+      return {
+        text: 'SYSTEM TROUBLE',
+        backgroundColor: '#ffc107', // Orange/Yellow
+        color: '#000000'
+      };
+    }
+    
+    // Default to NORMAL
+    return {
+      text: 'SYSTEM NORMAL',
+      backgroundColor: '#11B653', // Green
+      color: '#FFFFFF'
+    };
+  };
+
+  const systemStatus = getSystemStatus();
+
+  // Calculate active modules and zones dynamically
+  const getActiveStats = () => {
+    const slaves = Object.values(slaveData.slaves || {} as any);
+    const onlineSlaves = slaves.filter((slave: any) => slave.online);
+    const activeZones = onlineSlaves.reduce((total: number, slave: any) => {
+      const alarmZones = slave.alarm_zones?.length || 0;
+      const troubleZones = slave.trouble_zones?.length || 0;
+      return total + alarmZones + troubleZones;
+    }, 0);
+
+    return {
+      activeModules: onlineSlaves.length,
+      activeZones: activeZones
+    };
+  };
+
+  const activeStats = getActiveStats();
+
+  // Function to get register counts dynamically
+  const getRegisterStats = () => {
+    return {
+      moduleRegister: projectInfo.moduleRegister, // From Firebase
+      zoneRegister: projectInfo.zoneRegister // From Firebase
+    };
+  };
+
+  const registerStats = getRegisterStats();
+
 
   return (
     <View style={styles.navbarContainer}>
       <View style={styles.headerSection}>
         <Text style={styles.header}>PROJECT CONTROLL</Text>
-        <Text style={styles.projectName}>Gedung Atria</Text>
-        <Text style={styles.usage}>Usage Billing: </Text>
+        <Text style={styles.projectName}>{projectInfo.projectName}</Text>
+        <Text style={styles.usage}>Usage Billing: {projectInfo.usageBilling}</Text>
       </View>
 
       {/* Row Container */}
@@ -54,8 +118,8 @@ const NavBar = () => {
       {/* MASTER STATUS */}
       <View style={styles.statusContainer}>
         <Text style={styles.statusTitle}>SYSTEM STATUS</Text>
-        <View style={styles.statusCard}>
-          <Text style={styles.statusValue}>SYSTEM NORMAL</Text>
+        <View style={[styles.statusCard, { backgroundColor: systemStatus.backgroundColor }]}>
+          <Text style={[styles.statusValue, { color: systemStatus.color }]}>{systemStatus.text}</Text>
         </View>
       </View>
 
@@ -63,31 +127,31 @@ const NavBar = () => {
       <View style={styles.panelRow}>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>AC POWER</Text>
-          <View style={[styles.lightBullet, styles.lightOff]} />
+          <View style={[styles.lightBullet, (slaveData.masterStatus as any)?.ac_power ? styles.lightOn : styles.lightOff]} />
         </View>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>DC POWER</Text>
-          <View style={[styles.lightBullet, styles.lightOff]} />
+          <View style={[styles.lightBullet, (slaveData.masterStatus as any)?.dc_power ? styles.lightOn : styles.lightOff]} />
         </View>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>ALARM</Text>
-          <View style={[styles.lightBullet, styles.lightOff]} />
+          <View style={[styles.lightBullet, (slaveData.masterStatus as any)?.alarm_active ? styles.lightOn : styles.lightOff]} />
         </View>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>TROUBLE</Text>
-          <View style={[styles.lightBullet, styles.lightOff]} />
+          <View style={[styles.lightBullet, (slaveData.masterStatus as any)?.trouble_active ? styles.lightOn : styles.lightOff]} />
         </View>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>DRILL</Text>
-          <View style={[styles.lightBullet, styles.lightOff]} />
+          <View style={[styles.lightBullet, (slaveData.masterStatus as any)?.supervisory ? styles.lightOn : styles.lightOff]} />
         </View>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>SILENCED</Text>
-          <View style={[styles.lightBullet, styles.lightOff]} />
+          <View style={[styles.lightBullet, (slaveData.masterStatus as any)?.silenced ? styles.lightOn : styles.lightOff]} />
         </View>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>DISABLED</Text>
-          <View style={[styles.lightBullet, styles.lightOff]} />
+          <View style={[styles.lightBullet, (slaveData.masterStatus as any)?.disabled ? styles.lightOn : styles.lightOff]} />
         </View>
       </View>
 
@@ -95,21 +159,21 @@ const NavBar = () => {
         <View style={styles.moduleRow}>
           <View style={styles.moduleItem}>
             <Text style={styles.moduleLabel}>MODULE REGISTER</Text>
-            <Text style={styles.moduleValue}>63</Text>
+            <Text style={styles.moduleValue}>{registerStats.moduleRegister}</Text>
           </View>
           <View style={styles.moduleItem}>
             <Text style={styles.moduleLabel}>ZONE REGISTER</Text>
-            <Text style={styles.moduleValue}>315</Text>
+            <Text style={styles.moduleValue}>{registerStats.zoneRegister}</Text>
           </View>
         </View>
         <View style={styles.moduleRow}>
           <View style={styles.moduleItem}>
             <Text style={styles.moduleLabel}>MODULE ACTIVE</Text>
-            <Text style={styles.moduleValue}>20</Text>
+            <Text style={styles.moduleValue}>{activeStats.activeModules}</Text>
           </View>
           <View style={styles.moduleItem}>
             <Text style={styles.moduleLabel}>ZONE ACTIVE</Text>
-            <Text style={styles.moduleValue}>100</Text>
+            <Text style={styles.moduleValue}>{activeStats.activeZones}</Text>
           </View>
         </View>
       </View>

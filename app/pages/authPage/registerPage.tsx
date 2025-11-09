@@ -18,7 +18,7 @@ import { useAuth } from '../../hooks/useAuth';
 // --- DIMENSI DAN SKALA FIX ---
 const baseWidth = 1280;
 const baseHeight = 800;
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 const scale = screenWidth / baseWidth;
 const scaleSize = (size: number) => {
   return Math.round(size * scale);
@@ -27,7 +27,7 @@ const scaleSize = (size: number) => {
 
 const Signup = () => {
   const router = useRouter();
-  const { register, loading, error } = useAuth();
+  const { register, loading } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -149,10 +149,14 @@ const Signup = () => {
 
                   {/* Link Sign In */}
                   <View style={styles.signinContainer}>
-                    <Text style={styles.signinText}
-                    onPress={() => router.push('/pages/authPage/loginPage')}>
+                    <Text style={styles.signinText}>
                       Already have account?{' '}
-                      <Text style={styles.signinLink}>Sign in</Text>
+                      <Text 
+                        style={styles.signinLink}
+                        onPress={() => router.push('/pages/authPage/loginPage')}
+                      >
+                        Sign in
+                      </Text>
                     </Text>
                   </View>
                 </View>
@@ -279,6 +283,11 @@ const styles = StyleSheet.create({
   },
   signinContainer: {
     alignItems: 'center',
+  },
+  signinText: {
+    fontSize: scaleSize(14),
+    fontFamily: 'Poppins_500Medium',
+    color: '#666',
   },
   signinLink: {
     color: '#11B653',

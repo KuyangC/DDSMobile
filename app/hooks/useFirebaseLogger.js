@@ -45,7 +45,7 @@ export const useFirebaseLogger = () => {
 
     // Real-time connection status monitor
     const connectedRef = ref(database, '.info/connected');
-    const connectionListener = onValue(connectedRef, (snapshot) => {
+    onValue(connectedRef, (snapshot) => {
       const connected = snapshot.val();
       const timestamp = new Date().toLocaleTimeString();
       
