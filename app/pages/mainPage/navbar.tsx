@@ -4,14 +4,12 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import useSlaveData from '../../hooks/useSlaveData';
 import useProjectInfo from '../../hooks/useProjectInfo';
-import useAppSilence from '../../hooks/useAppSilence';
-import { fireAlarmCommands, appCommands } from '../../services/fireAlarmService';
+import { fireAlarmCommands } from '../../services/fireAlarmService';
 
 const NavBar = () => {
   const router = useRouter();
   const { slaveData } = useSlaveData();
   const { projectInfo } = useProjectInfo();
-  const { isSilenced: isAppSilenced } = useAppSilence();
   const [buttonFeedback, setButtonFeedback] = React.useState<string | null>(null);
 
   let [fontsLoaded] = useFonts({
@@ -137,14 +135,14 @@ const NavBar = () => {
           Alert.alert('Success', `Drill mode ${isDrillActive ? 'deactivated' : 'activated'}`);
           break;
           
-        case 'SILENCED_APP':
-          // App-only silence, doesn't affect backend
-          console.log('🔇 App silence toggle, current state:', isAppSilenced);
-          result = await appCommands.toggleSilence(isAppSilenced);
-          console.log('✅ App silence result:', result);
-          setButtonFeedback(result.message);
+        case 'SILENCED':
+          // Toggle silenced status (bell on/off)
+          result = await fireAlarmCommands.silenced(masterStatus);
+          const isSilenced = masterStatus.silenced;
+          console.log('✅ Silenced result:', result);
+          setButtonFeedback(`Bell ${isSilenced ? 'unsilenced' : 'silenced'}`);
           setTimeout(() => setButtonFeedback(null), 2000);
-          Alert.alert('Success', result.message);
+          Alert.alert('Success', `Bell ${isSilenced ? 'unsilenced' : 'silenced'}`);
           break;
           
         default:
@@ -229,7 +227,7 @@ const NavBar = () => {
         </View>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>SILENCED</Text>
-          <View style={[styles.lightBullet, isAppSilenced ? styles.lightOn : styles.lightOff]} />
+          <View style={[styles.lightBullet, (slaveData.masterStatus as any)?.silenced ? styles.lightOn : styles.lightOff]} />
         </View>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>DISABLED</Text>
@@ -290,7 +288,7 @@ const NavBar = () => {
             onPress={() => {
               console.log('🔇 SILENCED button clicked!');
               Alert.alert('Test', 'Silenced button pressed!');
-              handleFireAlarmCommand('SILENCED_APP');
+              handleFireAlarmCommand('SILENCED');
             }}
             activeOpacity={0.7}
           >
