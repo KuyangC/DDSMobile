@@ -1,21 +1,21 @@
-import { database } from '../config/firebaseConfig';
+import { db } from '../config/firebaseConfig';
 import { ref, set, get, onValue, off } from 'firebase/database';
 
 export const firebaseService = {
   // Check if Firebase is available
   isAvailable: () => {
-    return !!database;
+    return !!db;
   },
 
   // Write data to Firebase
   writeData: async (path, data) => {
-    if (!database) {
+    if (!db) {
       console.warn('⚠️ Firebase not available - write operation skipped');
       return null;
     }
 
     try {
-      const dbRef = ref(database, path);
+      const dbRef = ref(db, path);
       await set(dbRef, {
         ...data,
         _createdAt: new Date().toISOString()
@@ -30,13 +30,13 @@ export const firebaseService = {
 
   // Read data once
   readData: async (path) => {
-    if (!database) {
+    if (!db) {
       console.warn('⚠️ Firebase not available - read operation skipped');
       return null;
     }
 
     try {
-      const dbRef = ref(database, path);
+      const dbRef = ref(db, path);
       const snapshot = await get(dbRef);
       return snapshot.val();
     } catch (error) {
@@ -47,13 +47,13 @@ export const firebaseService = {
 
   // Real-time listener
   listenToData: (path, callback) => {
-    if (!database) {
+    if (!db) {
       console.warn('⚠️ Firebase not available - listener not set');
       return () => {};
     }
 
     try {
-      const dbRef = ref(database, path);
+      const dbRef = ref(db, path);
       onValue(dbRef, (snapshot) => {
         callback(snapshot.val());
       });
