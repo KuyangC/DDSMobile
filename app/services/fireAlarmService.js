@@ -1,5 +1,6 @@
 import { db } from '../config/firebaseConfig';
 import { ref, set, update, get } from 'firebase/database';
+import logService from './logService';
 
 /**
  * Service for controlling fire alarm panel commands via Firebase
@@ -9,9 +10,6 @@ import { ref, set, update, get } from 'firebase/database';
 // Path untuk command ke fire alarm panel
 const COMMAND_PATH = 'fire_alarm_commands';
 const STATUS_PATH = 'all_slave_data';
-
-// Path untuk local app state (untuk silence function)
-const APP_STATE_PATH = 'app_state';
 
 /**
  * Generate hex command for different fire alarm operations
@@ -103,6 +101,16 @@ export const sendFireAlarmCommand = async (operation, currentMasterStatus) => {
     const commandRef = ref(db, `${COMMAND_PATH}/${Date.now()}`);
     await set(commandRef, command);
     
+    // Log command event
+    try {
+      await logService.logEvent('COMMAND', `${operation} executed`, null, null, { 
+        operation, 
+        statusByte: commandData.hexCommand 
+      });
+    } catch (logError) {
+      console.warn('Failed to log command:', logError);
+    }
+    
     console.log(`✅ Fire alarm command sent: ${operation}`, command);
     return {
       success: true,
@@ -177,38 +185,6 @@ export const getCommandHistory = async () => {
   }
 };
 
-/**
- * Toggle app silence state (local only, doesn't affect backend)
- */
-export const toggleAppSilence = async (currentState) => {
-  if (!db) {
-    throw new Error('Firebase not available');
-  }
-  
-  try {
-    const newSilenceState = !currentState;
-    
-    // Update only app state, not master status
-    const appStateRef = ref(db, `${APP_STATE_PATH}/silence`);
-    await set(appStateRef, {
-      silenced: newSilenceState,
-      timestamp: Date.now(),
-      type: 'app_only' // Mark as app-only change
-    });
-    
-    console.log(`✅ App silence state updated: ${newSilenceState}`);
-    return {
-      success: true,
-      silenced: newSilenceState,
-      message: `App ${newSilenceState ? 'silenced' : 'unsilenced'} (local only)`
-    };
-    
-  } catch (error) {
-    console.error('❌ Failed to update app silence state:', error);
-    throw error;
-  }
-};
-
 // Export individual command functions for easier usage
 export const fireAlarmCommands = {
   systemReset: (currentStatus) => sendFireAlarmCommand('SYSTEM_RESET', currentStatus),
@@ -218,16 +194,9 @@ export const fireAlarmCommands = {
   updateStatus: (newStatus) => updateMasterStatus(newStatus)
 };
 
-// Export app-only functions
-export const appCommands = {
-  toggleSilence: (currentState) => toggleAppSilence(currentState)
-};
-
 export default {
   sendFireAlarmCommand,
   updateMasterStatus,
   getCommandHistory,
-  toggleAppSilence,
-  fireAlarmCommands,
-  appCommands
+  fireAlarmCommands
 };

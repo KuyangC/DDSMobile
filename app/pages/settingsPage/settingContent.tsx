@@ -1,6 +1,8 @@
 import { Poppins_500Medium, Poppins_600SemiBold, useFonts } from '@expo-google-fonts/poppins';
 import React from 'react';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import LogViewer from '../../components/LogViewer';
+import ESP32ConnectionTester from '../../components/ESP32ConnectionTester';
 
 interface SettingsContentProps {
     activeMenu: string;
@@ -51,16 +53,11 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ activeMenu }) => {
                     </View>
                 );
             
+            case 'esp32Connection':
+                return <ESP32ConnectionTester />;
+            
             case 'logData':
-                return (
-                    <View>
-                        <Text style={styles.title}>Log Data</Text>
-                        <Text style={styles.contentText}>
-                            View and manage system logs and activity history.
-                        </Text>
-                        {/* Tambah log viewer di sini */}
-                    </View>
-                );
+                return <LogViewer />;
             
             default:
                 return (
