@@ -1,14 +1,18 @@
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { useFonts, Poppins_700Bold, Poppins_500Medium, Poppins_600SemiBold } from '@expo-google-fonts/poppins';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import useSlaveData from '../../hooks/useSlaveData';
 import useProjectInfo from '../../hooks/useProjectInfo';
+import useAppSilence from '../../hooks/useAppSilence';
+import { fireAlarmCommands, appCommands } from '../../services/fireAlarmService';
 
 const NavBar = () => {
   const router = useRouter();
   const { slaveData } = useSlaveData();
   const { projectInfo } = useProjectInfo();
+  const { isSilenced: isAppSilenced } = useAppSilence();
+  const [buttonFeedback, setButtonFeedback] = React.useState<string | null>(null);
 
   let [fontsLoaded] = useFonts({
     Poppins_700Bold,
@@ -80,6 +84,84 @@ const NavBar = () => {
 
   const registerStats = getRegisterStats();
 
+  // Handler untuk fire alarm commands
+  const handleFireAlarmCommand = async (commandType: string) => {
+    console.log('🔥 Button pressed:', commandType);
+    setButtonFeedback(`Processing ${commandType}...`);
+    
+    try {
+      const masterStatus = slaveData.masterStatus as any || {};
+      console.log('🔧 Current master status:', masterStatus);
+      
+      // Show confirmation dialog for critical operations
+      if (commandType === 'SYSTEM_RESET') {
+        setButtonFeedback(null);
+        Alert.alert(
+          'System Reset Confirmation',
+          'This will reset all alarms and restore system to normal state. Continue?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Reset', 
+              style: 'destructive',
+              onPress: async () => {
+                const result = await fireAlarmCommands.systemReset(masterStatus);
+                console.log('✅ System reset result:', result);
+                setButtonFeedback('System reset complete!');
+                setTimeout(() => setButtonFeedback(null), 2000);
+                Alert.alert('Success', result.message);
+              }
+            }
+          ]
+        );
+        return;
+      }
+      
+      // Handle other commands
+      let result;
+      switch (commandType) {
+        case 'ACKNOWLEDGE':
+          result = await fireAlarmCommands.acknowledge(masterStatus);
+          console.log('✅ Acknowledge result:', result);
+          setButtonFeedback('Alarm acknowledged!');
+          setTimeout(() => setButtonFeedback(null), 2000);
+          Alert.alert('Success', 'Alarm acknowledged successfully');
+          break;
+          
+        case 'DRILL':
+          result = await fireAlarmCommands.drill(masterStatus);
+          const isDrillActive = masterStatus.supervisory;
+          console.log('✅ Drill result:', result);
+          setButtonFeedback(`Drill mode ${isDrillActive ? 'deactivated' : 'activated'}!`);
+          setTimeout(() => setButtonFeedback(null), 2000);
+          Alert.alert('Success', `Drill mode ${isDrillActive ? 'deactivated' : 'activated'}`);
+          break;
+          
+        case 'SILENCED_APP':
+          // App-only silence, doesn't affect backend
+          console.log('🔇 App silence toggle, current state:', isAppSilenced);
+          result = await appCommands.toggleSilence(isAppSilenced);
+          console.log('✅ App silence result:', result);
+          setButtonFeedback(result.message);
+          setTimeout(() => setButtonFeedback(null), 2000);
+          Alert.alert('Success', result.message);
+          break;
+          
+        default:
+          console.error('❌ Unknown command:', commandType);
+          setButtonFeedback(null);
+          Alert.alert('Error', 'Unknown command');
+          return;
+      }
+      
+    } catch (error) {
+      console.error(`❌ Error executing ${commandType}:`, error);
+      setButtonFeedback(`Error: ${error.message}`);
+      setTimeout(() => setButtonFeedback(null), 3000);
+      Alert.alert('Error', `Failed to execute ${commandType}. Please try again.`);
+    }
+  };
+
 
   return (
     <View style={styles.navbarContainer}>
@@ -147,7 +229,7 @@ const NavBar = () => {
         </View>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>SILENCED</Text>
-          <View style={[styles.lightBullet, (slaveData.masterStatus as any)?.silenced ? styles.lightOn : styles.lightOff]} />
+          <View style={[styles.lightBullet, isAppSilenced ? styles.lightOn : styles.lightOff]} />
         </View>
         <View style={styles.lightItem}>
           <Text style={styles.lightText}>DISABLED</Text>
@@ -180,22 +262,49 @@ const NavBar = () => {
 
       <View style={styles.buttonContainer}>
         <View style={styles.buttonRow}>
-          <View style={[styles.buttonItem, styles.systemResetButton]}>
+          <TouchableOpacity 
+            style={[styles.buttonItem, styles.systemResetButton]}
+            onPress={() => handleFireAlarmCommand('SYSTEM_RESET')}
+            activeOpacity={0.7}
+          >
             <Text style={styles.buttonText}>SYSTEM RESET</Text>
-          </View>
-          <View style={[styles.buttonItem, styles.acknowledgeButton]}>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.buttonItem, styles.acknowledgeButton]}
+            onPress={() => handleFireAlarmCommand('ACKNOWLEDGE')}
+            activeOpacity={0.7}
+          >
             <Text style={styles.buttonText}>ACKNOWLEDGE</Text>
-          </View>
+          </TouchableOpacity>
         </View>
         <View style={styles.buttonRow}>
-          <View style={[styles.buttonItem, styles.drillButton]}>
+          <TouchableOpacity 
+            style={[styles.buttonItem, styles.drillButton]}
+            onPress={() => handleFireAlarmCommand('DRILL')}
+            activeOpacity={0.7}
+          >
             <Text style={styles.buttonText}>DRILL</Text>
-          </View>
-          <View style={[styles.buttonItem, styles.silencedButton]}>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.buttonItem, styles.silencedButton]}
+            onPress={() => {
+              console.log('🔇 SILENCED button clicked!');
+              Alert.alert('Test', 'Silenced button pressed!');
+              handleFireAlarmCommand('SILENCED_APP');
+            }}
+            activeOpacity={0.7}
+          >
             <Text style={styles.buttonText}>SILENCED</Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
+      
+      {/* Visual Feedback */}
+      {buttonFeedback && (
+        <View style={styles.feedbackContainer}>
+          <Text style={styles.feedbackText}>{buttonFeedback}</Text>
+        </View>
+      )}
 
       {/* Image dan Button dalam layout vertikal */}
       <View style={styles.bottomSection}>
@@ -465,5 +574,19 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_500Medium",
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  feedbackContainer: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+    alignItems: 'center',
+    width: '100%',
+  },
+  feedbackText: {
+    fontSize: 10,
+    fontFamily: "Poppins_500Medium",
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
 });
