@@ -1,13 +1,14 @@
 /**
  * ESP32 HTTP Communication Service for React Native
- * Menganalisa koneksi ke http://192.168.43.246
+ * Menganalisa koneksi ke ESP32 dengan configurable IP address
  */
 
 import axios from 'axios';
+import esp32ConfigService from './esp32ConfigService';
 
 class ESP32Analyzer {
   constructor() {
-    this.baseUrl = 'http://192.168.43.246';
+    this.baseUrl = 'http://192.168.0.2';
     this.isConnected = false;
     this.stats = {
       requests: 0,
@@ -15,6 +16,44 @@ class ESP32Analyzer {
       lastResponse: null,
       responseTime: []
     };
+    
+    // Load config and subscribe to changes
+    this.loadInitialConfig();
+    esp32ConfigService.subscribe(this.updateConfig.bind(this));
+  }
+
+  async loadInitialConfig() {
+    try {
+      const config = await esp32ConfigService.loadConfig();
+      this.baseUrl = esp32ConfigService.getBaseUrl();
+      console.log('🌐 ESP32 Analyzer initialized with:', config);
+    } catch (error) {
+      console.error('❌ Failed to load initial ESP32 config:', error);
+    }
+  }
+
+  updateConfig(config) {
+    const newBaseUrl = esp32ConfigService.getBaseUrl();
+    if (newBaseUrl !== this.baseUrl) {
+      this.baseUrl = newBaseUrl;
+      console.log('🔄 ESP32 Analyzer updated base URL:', this.baseUrl);
+      
+      // Reset connection status when IP changes
+      this.isConnected = false;
+    }
+  }
+
+  // Get appropriate base URL based on current environment
+  getBaseUrl() {
+    // If running in HTTPS (Expo Go), we can't access HTTP endpoints
+    // This is a known limitation of web security
+    if (typeof window !== 'undefined' && window.location && window.location.protocol === 'https:') {
+      console.warn('⚠️ Mixed Content Warning: ESP32 HTTP not accessible from HTTPS web environment');
+      console.warn('💡 Solution: Use mobile app or serve ESP32 over HTTPS');
+      // Return URL for display purposes, but actual requests will fail
+      return this.baseUrl;
+    }
+    return this.baseUrl;
   }
 
   /**
@@ -29,9 +68,8 @@ class ESP32Analyzer {
       // Test basic endpoint
       const response = await axios.get(`${this.baseUrl}/status`, {
         timeout: 5000,
-        headers: {
-          'User-Agent': 'FireAlarm-App/1.0'
-        }
+        // Remove User-Agent header to avoid security warning
+        headers: {}
       });
 
       const endTime = Date.now();

@@ -7,12 +7,12 @@ import {
   Alert
 } from 'react-native';
 import { Poppins_500Medium, Poppins_600SemiBold, useFonts } from '@expo-google-fonts/poppins';
-import useESP32Connection from '../hooks/useESP32Connection';
-import ESP32ConfigModal from './ESP32ConfigModal';
+import useFirebaseConnection from '../hooks/useFirebaseConnection';
+import FirebaseConfigModal from './FirebaseConfigModal';
 import NotificationToast from './NotificationToast';
-import esp32ConfigService from '../services/esp32ConfigService';
+import firebaseConfigService from '../services/firebaseConfigService';
 
-const ESP32ConnectionTester = () => {
+const FirebaseConnectionTester = () => {
   let [fontsLoaded] = useFonts({
     Poppins_500Medium,
     Poppins_600SemiBold
@@ -22,17 +22,17 @@ const ESP32ConnectionTester = () => {
     isConnected,
     loading,
     error,
+    configStatus,
     stats,
-    fireAlarmData,
-    systemInfo,
     testConnection,
-    getFireAlarmData,
-    sendCommand,
-    getSystemInfo,
+    saveConfiguration,
+    resetConfiguration,
+    getCurrentConfig,
+    isConfigured,
+    getFirebaseConfig,
     refresh
-  } = useESP32Connection();
+  } = useFirebaseConnection();
 
-  const [testingCommand, setTestingCommand] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [currentConfig, setCurrentConfig] = useState(null);
   const [notification, setNotification] = useState({
@@ -46,9 +46,9 @@ const ESP32ConnectionTester = () => {
   React.useEffect(() => {
     const loadConfig = async () => {
       try {
-        const config = await esp32ConfigService.loadConfig();
+        const config = await firebaseConfigService.loadConfig();
         setCurrentConfig(config);
-        console.log('📱 Current ESP32 config loaded:', config);
+        console.log('📱 Current Firebase config loaded:', config);
       } catch (error) {
         console.error('Failed to load config:', error);
       }
@@ -69,22 +69,6 @@ const ESP32ConnectionTester = () => {
     return null;
   }
 
-  const handleTestCommand = async (command) => {
-    setTestingCommand(true);
-    try {
-      const result = await sendCommand(command);
-      if (result.success) {
-        Alert.alert('Success', `${command} command sent successfully`);
-      } else {
-        Alert.alert('Error', `Failed to send ${command}: ${result.error}`);
-      }
-    } catch (err) {
-      Alert.alert('Error', `Command error: ${err.message}`);
-    } finally {
-      setTestingCommand(false);
-    }
-  };
-
   const getStatusColor = (connected) => {
     return connected ? '#11B653' : '#FF3B30';
   };
@@ -94,11 +78,64 @@ const ESP32ConnectionTester = () => {
     return new Date(timestamp).toLocaleString();
   };
 
+  const handleTestConnection = async () => {
+    const result = await testConnection();
+    if (result.success) {
+      showNotification(
+        'success',
+        'Connection Successful',
+        'Firebase connection is working properly'
+      );
+    } else {
+      showNotification(
+        'error',
+        'Connection Failed',
+        result.error
+      );
+    }
+  };
+
+  const handleResetConfig = () => {
+    Alert.alert(
+      'Reset Configuration',
+      'Are you sure you want to reset Firebase configuration to defaults?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await resetConfiguration();
+            if (result.success) {
+              setCurrentConfig(firebaseConfigService.getConfig());
+              showNotification(
+                'success',
+                'Configuration Reset',
+                'Firebase configuration has been reset to defaults'
+              );
+            } else {
+              showNotification(
+                'error',
+                'Reset Failed',
+                result.error
+              );
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const getSuccessRate = () => {
+    if (stats.connectionTests === 0) return '0%';
+    return Math.round((stats.successfulTests / stats.connectionTests) * 100) + '%';
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>ESP32 Connection</Text>
+        <Text style={styles.title}>Firebase Connection</Text>
         <View style={styles.statusRow}>
           <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(isConnected) }]} />
           <Text style={[styles.statusText, { color: getStatusColor(isConnected) }]}>
@@ -107,10 +144,10 @@ const ESP32ConnectionTester = () => {
         </View>
       </View>
 
-      {/* Connection Info */}
+      {/* Configuration Status */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Connection Details</Text>
+          <Text style={styles.sectionTitle}>Configuration Status</Text>
           <TouchableOpacity 
             style={styles.editButton} 
             onPress={() => setShowConfigModal(true)}
@@ -118,87 +155,82 @@ const ESP32ConnectionTester = () => {
             <Text style={styles.editButtonText}>Edit</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>IP Address:</Text>
-          <Text style={styles.infoValue}>{currentConfig?.ipAddress || 'Loading...'}</Text>
-        </View>
+        
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Status:</Text>
-          <Text style={[styles.infoValue, { color: getStatusColor(isConnected) }]}>
-            {isConnected ? 'Online' : 'Offline'}
+          <Text style={[styles.infoValue, { color: configStatus?.color || getStatusColor(isConnected) }]}>
+            {configStatus?.message || (isConnected ? 'Configured' : 'Not Configured')}
           </Text>
         </View>
-        {stats && (
-          <>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Total Requests:</Text>
-              <Text style={styles.infoValue}>{stats.totalRequests}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Success Rate:</Text>
-              <Text style={styles.infoValue}>{stats.successRate}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Avg Response:</Text>
-              <Text style={styles.infoValue}>{stats.avgResponseTime}</Text>
-            </View>
-          </>
-        )}
+        
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Project ID:</Text>
+          <Text style={styles.infoValue}>
+            {currentConfig?.projectId || 'Not Set'}
+          </Text>
+        </View>
+        
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Database URL:</Text>
+          <Text style={[styles.infoValue, { fontSize: 12 }]} numberOfLines={1}>
+            {currentConfig?.databaseURL || 'Not Set'}
+          </Text>
+        </View>
       </View>
 
-      {/* System Info */}
-      {systemInfo && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>System Information</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Firmware:</Text>
-            <Text style={styles.infoValue}>{systemInfo.firmware || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>MAC Address:</Text>
-            <Text style={styles.infoValue}>{systemInfo.mac || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>WiFi Signal:</Text>
-            <Text style={styles.infoValue}>{systemInfo.wifiSignal || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Uptime:</Text>
-            <Text style={styles.infoValue}>{systemInfo.uptime || 'N/A'}</Text>
-          </View>
+      {/* Connection Statistics */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Connection Statistics</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Connection Tests:</Text>
+          <Text style={styles.infoValue}>{stats.connectionTests}</Text>
         </View>
-      )}
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Successful Tests:</Text>
+          <Text style={styles.infoValue}>{stats.successfulTests}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Success Rate:</Text>
+          <Text style={styles.infoValue}>{getSuccessRate()}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Avg Response:</Text>
+          <Text style={styles.infoValue}>{stats.averageResponseTime}ms</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Last Test:</Text>
+          <Text style={styles.infoValue}>{formatTimestamp(stats.lastTestTime)}</Text>
+        </View>
+      </View>
 
-      {/* Fire Alarm Data */}
-      {fireAlarmData && (
+      {/* Firebase Info */}
+      {currentConfig && isConfigured() && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fire Alarm Status</Text>
+          <Text style={styles.sectionTitle}>Firebase Information</Text>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Master Status:</Text>
-            <Text style={styles.infoValue}>{fireAlarmData.masterStatus || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Total Slaves:</Text>
-            <Text style={styles.infoValue}>{fireAlarmData.slaves?.length || 0}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Active Alarms:</Text>
-            <Text style={styles.infoValue}>
-              {fireAlarmData.slaves?.filter(s => s.status === 'ALARM').length || 0}
+            <Text style={styles.infoLabel}>Auth Domain:</Text>
+            <Text style={[styles.infoValue, { fontSize: 12 }]} numberOfLines={1}>
+              {currentConfig.authDomain}
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Active Troubles:</Text>
-            <Text style={styles.infoValue}>
-              {fireAlarmData.slaves?.filter(s => s.status === 'TROUBLE').length || 0}
+            <Text style={styles.infoLabel}>Storage Bucket:</Text>
+            <Text style={[styles.infoValue, { fontSize: 12 }]} numberOfLines={1}>
+              {currentConfig.storageBucket}
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Last Update:</Text>
-            <Text style={styles.infoValue}>
-              {formatTimestamp(fireAlarmData.timestamp)}
+            <Text style={styles.infoLabel}>App ID:</Text>
+            <Text style={[styles.infoValue, { fontSize: 10 }]} numberOfLines={1}>
+              {currentConfig.appId}
             </Text>
           </View>
+          {currentConfig.measurementId && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Measurement ID:</Text>
+              <Text style={styles.infoValue}>{currentConfig.measurementId}</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -216,62 +248,25 @@ const ESP32ConnectionTester = () => {
           
           <TouchableOpacity 
             style={[styles.button, styles.testButton]} 
-            onPress={testConnection}
+            onPress={handleTestConnection}
             disabled={loading}
           >
             <Text style={styles.buttonText}>Test Connection</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.button, styles.dataButton]} 
-            onPress={getFireAlarmData}
-            disabled={!isConnected || loading}
+            style={[styles.button, styles.configButton]} 
+            onPress={() => setShowConfigModal(true)}
           >
-            <Text style={styles.buttonText}>Get Data</Text>
+            <Text style={styles.buttonText}>Configure</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.button, styles.infoButton]} 
-            onPress={getSystemInfo}
-            disabled={!isConnected || loading}
+            style={[styles.button, styles.resetButton]} 
+            onPress={handleResetConfig}
+            disabled={loading}
           >
-            <Text style={styles.buttonText}>System Info</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Command Testing */}
-        <Text style={styles.sectionTitle}>Command Testing</Text>
-        <View style={styles.buttonGrid}>
-          <TouchableOpacity 
-            style={[styles.button, styles.commandButton]} 
-            onPress={() => handleTestCommand('SYSTEM_RESET')}
-            disabled={!isConnected || loading || testingCommand}
-          >
-            <Text style={styles.buttonText}>System Reset</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.button, styles.commandButton]} 
-            onPress={() => handleTestCommand('ACKNOWLEDGE')}
-            disabled={!isConnected || loading || testingCommand}
-          >
-            <Text style={styles.buttonText}>Acknowledge</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.button, styles.commandButton]} 
-            onPress={() => handleTestCommand('DRILL')}
-            disabled={!isConnected || loading || testingCommand}
-          >
-            <Text style={styles.buttonText}>Drill Mode</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.button, styles.commandButton]} 
-            onPress={() => handleTestCommand('SILENCED')}
-            disabled={!isConnected || loading || testingCommand}
-          >
-            <Text style={styles.buttonText}>Silence Bell</Text>
+            <Text style={styles.buttonText}>Reset Config</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -292,11 +287,11 @@ const ESP32ConnectionTester = () => {
       )}
 
       {/* Configuration Modal */}
-      <ESP32ConfigModal
+      <FirebaseConfigModal
         visible={showConfigModal}
         onClose={() => setShowConfigModal(false)}
-        onConfigUpdated={(newConfig) => {
-          console.log('🔄 ESP32 config updated:', newConfig);
+        onConfigUpdated={async (newConfig) => {
+          console.log('🔄 Firebase config updated:', newConfig);
           setCurrentConfig(newConfig);
           
           // Close modal first
@@ -306,7 +301,7 @@ const ESP32ConnectionTester = () => {
           showNotification(
             'success',
             'Configuration Saved',
-            `ESP32 IP updated to ${newConfig.ipAddress}`
+            'Firebase configuration updated successfully'
           );
           
           // Test connection after config change
@@ -316,13 +311,13 @@ const ESP32ConnectionTester = () => {
               showNotification(
                 'success',
                 'Connection Success',
-                'ESP32 connected successfully!'
+                'Firebase connected successfully!'
               );
             } else {
               showNotification(
                 'error',
                 'Connection Failed',
-                'Could not connect to ESP32. Please check IP address.'
+                'Could not connect to Firebase. Please check configuration.'
               );
             }
           }, 1000);
@@ -417,7 +412,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Poppins_600SemiBold',
     color: '#333',
-    flex: 1,
+    flex: 1.5,
     textAlign: 'right',
   },
   buttonGrid: {
@@ -439,15 +434,11 @@ const styles = StyleSheet.create({
   testButton: {
     backgroundColor: '#007AFF',
   },
-  dataButton: {
+  configButton: {
     backgroundColor: '#11B653',
   },
-  infoButton: {
+  resetButton: {
     backgroundColor: '#FF9500',
-  },
-  commandButton: {
-    backgroundColor: '#FF3B30',
-    minWidth: '48%',
   },
   buttonText: {
     color: '#fff',
@@ -489,4 +480,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ESP32ConnectionTester;
+export default FirebaseConnectionTester;

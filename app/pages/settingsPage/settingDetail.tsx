@@ -57,6 +57,13 @@ const SettingsDetail: React.FC<SettingDetailProps> = ({ onMenuPress }) => {
                 
                 <TouchableOpacity 
                     style={styles.settingsButton}
+                    onPress={() => onMenuPress('firebaseConnection')}
+                >
+                    <Text style={styles.buttonText}>FIREBASE CONNECTION</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                    style={styles.settingsButton}
                     onPress={() => onMenuPress('logData')}
                 >
                     <Text style={styles.buttonText}>LOG DATA</Text>

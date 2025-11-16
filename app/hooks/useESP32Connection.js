@@ -136,6 +136,7 @@ const useESP32Connection = (monitoringInterval = 30000) => {
   // Initial connection test
   useEffect(() => {
     testConnection();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-refresh stats every 5 seconds

@@ -3,6 +3,7 @@ import React from 'react';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import LogViewer from '../../components/LogViewer';
 import ESP32ConnectionTester from '../../components/ESP32ConnectionTester';
+import FirebaseConnectionTester from '../../components/FirebaseConnectionTester';
 
 interface SettingsContentProps {
     activeMenu: string;
@@ -55,6 +56,9 @@ const SettingsContent: React.FC<SettingsContentProps> = ({ activeMenu }) => {
             
             case 'esp32Connection':
                 return <ESP32ConnectionTester />;
+            
+            case 'firebaseConnection':
+                return <FirebaseConnectionTester />;
             
             case 'logData':
                 return <LogViewer />;

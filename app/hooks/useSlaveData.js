@@ -122,6 +122,7 @@ const useSlaveData = () => {
       setProcessedData(defaultData);
     }
   }, [rawDataObject]); // Effect runs when the object from Firebase changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // The UI component expects an object with a `slaves` property.
   // We pass the whole processed data object.
